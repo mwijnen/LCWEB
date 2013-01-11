@@ -1,0 +1,42 @@
+# depslib dependency file v1.0
+1357928918 source:/home/tiny/coding/LCWEB/LCWEB/main.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	<sys/types.h>
+	<sys/socket.h>
+	<netdb.h>
+	<unistd.h>
+	<sys/epoll.h>
+	<errno.h>
+	"LCWEB_utils.h"
+
+1357911563 /home/tiny/coding/LCWEB/LCWEB/utils.h
+
+1357912242 source:/home/tiny/coding/LCWEB/LCWEB/utils.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	<errno.h>
+	<fcntl.h>
+	<sys/socket.h>
+	<netdb.h>
+	<unistd.h>
+	"utils.h"
+
+1357911923 source:/home/tiny/coding/LCWEB/LCWEB/LCWEB_server.c
+
+1357928941 source:/home/tiny/coding/LCWEB/LCWEB/LCWEB_utils.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	<errno.h>
+	<fcntl.h>
+	<sys/socket.h>
+	<netdb.h>
+	<unistd.h>
+	<sys/epoll.h>
+	"LCWEB_utils.h"
+
+1357926547 /home/tiny/coding/LCWEB/LCWEB/LCWEB_utils.h
+
