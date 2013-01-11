@@ -26,21 +26,11 @@ main (int argc, char *argv[]) {
         port = argv[1];
     }
 
-    listen_fd = LCWEB_initialize_server (port);
+    LCWEB_socket_listen_nonblocking (&listen_fd, port);
 
-    epoll_fd = epoll_create1 (0);
-    if (epoll_fd == -1) {
-        perror ("epoll_create");
-        abort ();
-    }
+    LCWEB_epoll_create (&epoll_fd);
 
-    event.data.fd = listen_fd;
-    event.events = EPOLLIN | EPOLLET;
-    s = epoll_ctl (epoll_fd, EPOLL_CTL_ADD, listen_fd, &event);
-    if (s == -1) {
-        perror ("epoll_ctl");
-        abort ();
-    }
+    LCWEB_epoll_add_etin (&epoll_fd, &listen_fd);
 
     events = calloc (MAXEVENTS, sizeof event);
     int fd_array[3] = {-1, -1, -1};
@@ -55,31 +45,17 @@ main (int argc, char *argv[]) {
             if ((events[i].events & EPOLLERR) ||
                     (events[i].events & EPOLLHUP) ||
                     (!((events[i].events & EPOLLIN) || (events[i].events & EPOLLOUT)))) {
-                /* An error has occured on this fd, or the socket is not
-                   ready for reading (why were we notified then?) */
+                // An error has occured on this fd, or the socket is not ready for reading (why were we notified then?) */
                 fprintf (stderr, "epoll error\n");
                 close (events[i].data.fd);
                 continue;
             }
 
             else if (listen_fd == events[i].data.fd) {
-                /* We have a notification on the listening socket, which
-                   means one or more incoming connections. */
+                // We have a notification on the listening socket, which means one or more incoming connections.
                 while (1) {
-                    //struct sockaddr in_addr;
-                    //socklen_t in_len;
-                    int client_id;
-                    client_id = LCWEB_accept_connection (listen_fd);
-                    if (client_id == -1){
+                    if (LCWEB_accept_connection (epoll_fd, listen_fd) == -1){
                         break;
-                    }
-
-                    event.data.fd = client_id;
-                    event.events = EPOLLIN | EPOLLET;
-                    s = epoll_ctl (epoll_fd, EPOLL_CTL_ADD, client_id, &event);
-                    if (s == -1) {
-                        perror ("epoll_ctl");
-                        abort ();
                     }
                 }
                 continue;

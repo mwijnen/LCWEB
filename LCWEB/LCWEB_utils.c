@@ -71,29 +71,27 @@ LCWEB_create_and_bind (char *port) {
     return listen_fd;
 }
 
-int
-LCWEB_initialize_server (char *port) {
-    int listen_fd, result;
+void
+LCWEB_socket_listen_nonblocking (int *listen_fd, char *port) {
+    int s;
 
-    listen_fd = LCWEB_create_and_bind (port);
+    *listen_fd = LCWEB_create_and_bind (port);
     if (listen_fd == -1) {
         LCWEB_abort ();
     }
 
-    result = LCWEB_make_socket_non_blocking (listen_fd);
-    if (result == -1) {
+    s = LCWEB_make_socket_non_blocking (*listen_fd);
+    if (s == -1) {
         LCWEB_abort ();
     }
 
-    result = listen (listen_fd, SOMAXCONN); //MW: SOMAXCONN defines the listening queue size
-    if (result == -1) {
+    s = listen (*listen_fd, SOMAXCONN); //MW: SOMAXCONN defines the listening queue size
+    if (s == -1) {
         perror ("listen");
         LCWEB_abort ();
     }
 
     printf ("LCWEB initialized");
-
-    return listen_fd;
 }
 
 void
@@ -102,7 +100,7 @@ LCWEB_abort (void) {
 }
 
 int
-LCWEB_accept_connection (int listen_fd) {
+LCWEB_accept_connection (int epoll_fd, int listen_fd) {
     struct sockaddr in_addr;
     socklen_t in_len;
     int client_fd, s;
@@ -135,24 +133,35 @@ LCWEB_accept_connection (int listen_fd) {
     if (s == -1)
         LCWEB_abort ();
 
+    LCWEB_epoll_add_etin (&epoll_fd, &client_fd);
     return client_fd;
 }
 
 int
-LCWEB_add_client_to_epoll (int epoll_fd, int client_fd) {
-    int s;
-    struct epoll_event event;
-    event.data.fd = client_fd;
-    /*MW: Added the EPOLLOUT trigger to get notified when writable */
-    event.events = EPOLLOUT | EPOLLIN | EPOLLET; //event.events = EPOLLIN | EPOLLET;i
-    s = epoll_ctl (epoll_fd, EPOLL_CTL_ADD, client_fd, &event);
-    if (s == -1) {
-        printf ("\n attempted to write to epoll_fd:%i", epoll_fd);
-        printf ("\n attempted to add client_fd:%i", client_fd);
-        perror ("epoll_ctl");
+LCWEB_read_client_data (int client_fd) {
+
+}
+
+void
+LCWEB_epoll_create (int *epoll_fd) {
+    *epoll_fd = epoll_create1 (0);
+    if (*epoll_fd == -1) {
+        perror ("epoll_create");
         abort ();
     }
-    return 0;
+}
+
+void
+LCWEB_epoll_add_etin (int *epoll_fd, int *client_fd) {
+    int s;
+    struct epoll_event event;
+    event.data.fd = *client_fd;
+    event.events = EPOLLIN | EPOLLET;
+    s = epoll_ctl (*epoll_fd, EPOLL_CTL_ADD, *client_fd, &event);
+    if (s == -1) {
+        perror ("epoll_ctl");
+        LCWEB_abort ();
+    }
 }
 
 int
@@ -183,3 +192,7 @@ LCWEB_send_default_message(int fd) {
     printf("Send %d bytes\n", ret);
     return ret;
 }
+
+
+
+
