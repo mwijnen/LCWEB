@@ -91,7 +91,7 @@ LCWEB_socket_listen_nonblocking (int *listen_fd, char *port) {
         LCWEB_abort ();
     }
 
-    printf ("LCWEB initialized");
+    printf ("LCWEB initialized\n");
 }
 
 void
@@ -138,8 +138,38 @@ LCWEB_accept_connection (int epoll_fd, int listen_fd) {
 }
 
 int
-LCWEB_read_client_data (int client_fd) {
+LCWEB_socket_read (int client_fd) {
+    int done;
+    while (1) {
+        int s;
+        ssize_t count;
+        char buf[512];
+        done = 0;
+        count = read (client_fd, buf, sizeof buf);
+        if (count == -1) {
+            /* If errno == EAGAIN, that means we have read all
+               data. So go back to the main loop. */
+            if (errno != EAGAIN) {
+                perror ("read");
+                done = 1;
+            }
+            break;
+        } else if (count == 0) {
+            /* End of file. The remote has closed the
+               connection. */
+            done = 1;
+            break;
+        }
 
+        /* Write the buffer to standard output */
+        s = write (1, buf, count);
+
+        if (s == -1) {
+            perror ("write");
+            LCWEB_abort ();
+        }
+    }
+    return done;
 }
 
 void

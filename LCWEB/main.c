@@ -38,10 +38,11 @@ main (int argc, char *argv[]) {
     while (1) {
         int n, i;
         n = epoll_wait (epoll_fd, events, MAXEVENTS, -1);
+
         for (i = 0; i < n; i++) {
-            if (index == 2) {
-                LCWEB_send_default_message (fd_array[2]);
-            }
+            //if (-1) {
+            //    LCWEB_send_default_message (fd_array[2]);
+            //}
             if ((events[i].events & EPOLLERR) ||
                     (events[i].events & EPOLLHUP) ||
                     (!((events[i].events & EPOLLIN) || (events[i].events & EPOLLOUT)))) {
@@ -54,7 +55,7 @@ main (int argc, char *argv[]) {
             else if (listen_fd == events[i].data.fd) {
                 // We have a notification on the listening socket, which means one or more incoming connections.
                 while (1) {
-                    if (LCWEB_accept_connection (epoll_fd, listen_fd) == -1){
+                    if (LCWEB_accept_connection (epoll_fd, listen_fd) == -1) {
                         break;
                     }
                 }
@@ -67,37 +68,7 @@ main (int argc, char *argv[]) {
                    data. */
                 int done = 0;
 
-                fd_array[index] = events[i].data.fd;
-                index++;
-
-                while (1) {
-                    ssize_t count;
-                    char buf[512];
-
-                    count = read (events[i].data.fd, buf, sizeof buf);
-                    if (count == -1) {
-                        /* If errno == EAGAIN, that means we have read all
-                           data. So go back to the main loop. */
-                        if (errno != EAGAIN) {
-                            perror ("read");
-                            done = 1;
-                        }
-                        break;
-                    } else if (count == 0) {
-                        /* End of file. The remote has closed the
-                           connection. */
-                        done = 1;
-                        break;
-                    }
-
-                    /* Write the buffer to standard output */
-                    s = write (1, buf, count);
-
-                    if (s == -1) {
-                        perror ("write");
-                        abort ();
-                    }
-                }
+                done = LCWEB_socket_read (events[i].data.fd);
 
                 if (done) {
                     printf ("Closed connection on descriptor %d\n",
