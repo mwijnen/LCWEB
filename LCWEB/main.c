@@ -15,7 +15,6 @@
 
 int
 main (int argc, char *argv[]) {
-    int s;
     int epoll_fd;
     int listen_fd;
     char *port = PORT;
@@ -33,16 +32,14 @@ main (int argc, char *argv[]) {
     LCWEB_epoll_add_etin (&epoll_fd, &listen_fd);
 
     events = calloc (MAXEVENTS, sizeof event);
-    int fd_array[3] = {-1, -1, -1};
-    int index = 0;
+
+    ///MW: EVENT LOOP
     while (1) {
         int n, i;
         n = epoll_wait (epoll_fd, events, MAXEVENTS, -1);
 
         for (i = 0; i < n; i++) {
-            //if (-1) {
-            //    LCWEB_send_default_message (fd_array[2]);
-            //}
+            ///MW: CHECK EVENT VALIDITY AND ERRORS
             if ((events[i].events & EPOLLERR) ||
                     (events[i].events & EPOLLHUP) ||
                     (!((events[i].events & EPOLLIN) || (events[i].events & EPOLLOUT)))) {
@@ -52,24 +49,29 @@ main (int argc, char *argv[]) {
                 continue;
             }
 
+            ///MW: ACCEPT CONNECTIONS
             else if (listen_fd == events[i].data.fd) {
                 // We have a notification on the listening socket, which means one or more incoming connections.
                 while (1) {
-                    if (LCWEB_accept_connection (epoll_fd, listen_fd) == -1) {
+                    if (LCWEB_socket_accept (epoll_fd, listen_fd) == -1) {
                         break;
                     }
                 }
                 continue;
-            } else {
-                /* We have data on the fd waiting to be read. Read and
-                   display it. We must read whatever data is available
-                   completely, as we are running in edge-triggered mode
-                   and won't get a notification again for the same
-                   data. */
+
+                ///MW: READ DATA
+            }
+
+
+            else if ( 0 != 0) {
+                ///MW: WRITE DATA
+            }
+
+            else {
+                /* We have data on the fd waiting to be read. Read and display it. We must read whatever data is available
+                   completely, as we are running in edge-triggered mode and won't get a notification again for the same data. */
                 int done = 0;
-
                 done = LCWEB_socket_read (events[i].data.fd);
-
                 if (done) {
                     printf ("Closed connection on descriptor %d\n",
                             events[i].data.fd);
@@ -79,8 +81,6 @@ main (int argc, char *argv[]) {
                     close (events[i].data.fd);
                 }
             }
-
-
         }
     }
 

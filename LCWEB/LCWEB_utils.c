@@ -10,31 +10,29 @@
 
 #include "LCWEB_utils.h"
 
-int
-LCWEB_make_socket_non_blocking (int sfd) {
+void
+LCWEB_socket_set_non_blocking (int socket_fd) {
     int flags, s;
 
-    flags = fcntl (sfd, F_GETFL, 0);
+    flags = fcntl (socket_fd, F_GETFL, 0);
     if (flags == -1) {
         perror ("fcntl");
-        return -1;
+        LCWEB_abort();
     }
 
     flags |= O_NONBLOCK;
-    s = fcntl (sfd, F_SETFL, flags);
+    s = fcntl (socket_fd, F_SETFL, flags);
     if (s == -1) {
         perror ("fcntl");
-        return -1;
+        LCWEB_abort();
     }
-
-    return 0;
 }
 
-int
-LCWEB_create_and_bind (char *port) {
+void
+LCWEB_socket_create_and_bind (int *socket_fd, char *port) {
     struct addrinfo hints;
     struct addrinfo *result, *rp;
-    int s, listen_fd;
+    int s;
 
     memset (&hints, 0, sizeof (struct addrinfo));
     hints.ai_family = AF_UNSPEC;     /* Return IPv4 and IPv6 choices */
@@ -44,48 +42,38 @@ LCWEB_create_and_bind (char *port) {
     s = getaddrinfo (NULL, port, &hints, &result);
     if (s != 0) {
         fprintf (stderr, "getaddrinfo: %s\n", gai_strerror (s));
-        return -1;
+        LCWEB_abort();
     }
 
     for (rp = result; rp != NULL; rp = rp->ai_next) {
-        listen_fd = socket (rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-        if (listen_fd == -1)
+        *socket_fd = socket (rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+        if (*socket_fd == -1)
             continue;
 
-        s = bind (listen_fd, rp->ai_addr, rp->ai_addrlen);
+        s = bind (*socket_fd, rp->ai_addr, rp->ai_addrlen);
         if (s == 0) {
             /* We managed to bind successfully! */
             break;
         }
-
-        close (listen_fd);
+        close (*socket_fd);
     }
 
     if (rp == NULL) {
         fprintf (stderr, "Could not bind\n");
-        return -1;
+        LCWEB_abort();
     }
-
     freeaddrinfo (result);
-
-    return listen_fd;
 }
 
 void
-LCWEB_socket_listen_nonblocking (int *listen_fd, char *port) {
+LCWEB_socket_listen_nonblocking (int *socket_fd, char *port) {
     int s;
 
-    *listen_fd = LCWEB_create_and_bind (port);
-    if (listen_fd == -1) {
-        LCWEB_abort ();
-    }
+    LCWEB_socket_create_and_bind (socket_fd, port);
 
-    s = LCWEB_make_socket_non_blocking (*listen_fd);
-    if (s == -1) {
-        LCWEB_abort ();
-    }
+    LCWEB_socket_set_non_blocking (*socket_fd);
 
-    s = listen (*listen_fd, SOMAXCONN); //MW: SOMAXCONN defines the listening queue size
+    s = listen (*socket_fd, SOMAXCONN); //MW: SOMAXCONN defines the listening queue size
     if (s == -1) {
         perror ("listen");
         LCWEB_abort ();
@@ -100,7 +88,7 @@ LCWEB_abort (void) {
 }
 
 int
-LCWEB_accept_connection (int epoll_fd, int listen_fd) {
+LCWEB_socket_accept (int epoll_fd, int listen_fd) {
     struct sockaddr in_addr;
     socklen_t in_len;
     int client_fd, s;
@@ -129,9 +117,7 @@ LCWEB_accept_connection (int epoll_fd, int listen_fd) {
 
     /* Make the incoming socket non-blocking and add it to the
        list of fds to monitor. */
-    s = LCWEB_make_socket_non_blocking (client_fd);
-    if (s == -1)
-        LCWEB_abort ();
+    LCWEB_socket_set_non_blocking (client_fd);
 
     LCWEB_epoll_add_etin (&epoll_fd, &client_fd);
     return client_fd;
