@@ -124,14 +124,14 @@ LCWEB_socket_accept (int epoll_fd, int listen_fd) {
 }
 
 int
-LCWEB_socket_read (int client_fd) {
+LCWEB_socket_read (int socket_fd) {
     int done;
     while (1) {
         int s;
         ssize_t count;
         char buf[512];
         done = 0;
-        count = read (client_fd, buf, sizeof buf);
+        count = read (socket_fd, buf, sizeof buf);
         if (count == -1) {
             /* If errno == EAGAIN, that means we have read all
                data. So go back to the main loop. */
@@ -155,6 +155,18 @@ LCWEB_socket_read (int client_fd) {
             LCWEB_abort ();
         }
     }
+    //MW:
+    //if (done == 0) {
+        printf ("\nwrite to: %i\n\n\n", socket_fd );
+        if (done == 0) {
+            LCWEB_send_default_message(socket_fd);
+            done = 1;
+        }
+        //    *newest_fd = *newest_fd + 1;
+        //    fd_buffer[*newest_fd];
+        //    printf ("\nAdded file descriptor: %i\n", socket_fd);
+        //    printf ("At position: %i\n", *newest_fd);
+    //}
     return done;
 }
 
@@ -184,7 +196,10 @@ int
 LCWEB_send_default_message(int fd) {
     printf("attempt to send data\n");
     int ret;
-    char *message="This is a message to send\n\r";
+    char *message=
+    "HTTP/1.1 200 OK\nConnection: close\nContent-Type: text/html\n\n\nHello World!";
+    //"Hello World!";
+
     ret = send(fd,message,strlen(message),0);
     /*MW: add a test for EAGAIN and add to burrer in case send has failed */
     if (ret == -1) {

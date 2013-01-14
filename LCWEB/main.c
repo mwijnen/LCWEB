@@ -58,15 +58,9 @@ main (int argc, char *argv[]) {
                     }
                 }
                 continue;
-
-                ///MW: READ DATA
             }
 
-
-            else if ( 0 != 0) {
-                ///MW: WRITE DATA
-            }
-
+            ///MW: READ DATA
             else {
                 /* We have data on the fd waiting to be read. Read and display it. We must read whatever data is available
                    completely, as we are running in edge-triggered mode and won't get a notification again for the same data. */
@@ -81,6 +75,7 @@ main (int argc, char *argv[]) {
                     close (events[i].data.fd);
                 }
             }
+
         }
     }
 

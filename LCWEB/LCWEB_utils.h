@@ -11,7 +11,7 @@ void
 LCWEB_socket_listen_nonblocking (int *socket_fd, char *port);
 
 int
-LCWEB_socket_read (int client_fd);
+LCWEB_socket_read (int socket_fd);
 
 int
 LCWEB_socket_accept (int epoll_fd, int listen_fd);
