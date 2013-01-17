@@ -31,6 +31,10 @@
 		<Compiler>
 			<Add option="-Wall" />
 		</Compiler>
+		<Unit filename="LCWEB_http.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="LCWEB_http.h" />
 		<Unit filename="LCWEB_server.c">
 			<Option compilerVar="CC" />
 		</Unit>

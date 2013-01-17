@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
-#include <sys/socket.h> //MW: sockets
-#include <netdb.h> //MW: sockets address structs
+#include <sys/socket.h>
+#include <netdb.h>
 #include <unistd.h>
 #include <sys/epoll.h>
 #include <errno.h>
@@ -33,25 +33,19 @@ main (int argc, char *argv[]) {
 
     events = calloc (MAXEVENTS, sizeof event);
 
-    ///MW: EVENT LOOP
     while (1) {
         int n, i;
         n = epoll_wait (epoll_fd, events, MAXEVENTS, -1);
 
         for (i = 0; i < n; i++) {
-            ///MW: CHECK EVENT VALIDITY AND ERRORS
-            if ((events[i].events & EPOLLERR) ||
-                    (events[i].events & EPOLLHUP) ||
-                    (!((events[i].events & EPOLLIN) || (events[i].events & EPOLLOUT)))) {
-                // An error has occured on this fd, or the socket is not ready for reading (why were we notified then?) */
+
+            if ( (events[i].events & EPOLLERR) || (events[i].events & EPOLLHUP) || !(events[i].events & EPOLLIN) ) {
                 fprintf (stderr, "epoll error\n");
                 close (events[i].data.fd);
                 continue;
             }
 
-            ///MW: ACCEPT CONNECTIONS
             else if (listen_fd == events[i].data.fd) {
-                // We have a notification on the listening socket, which means one or more incoming connections.
                 while (1) {
                     if (LCWEB_socket_accept (epoll_fd, listen_fd) == -1) {
                         break;
@@ -60,20 +54,8 @@ main (int argc, char *argv[]) {
                 continue;
             }
 
-            ///MW: READ DATA
             else {
-                /* We have data on the fd waiting to be read. Read and display it. We must read whatever data is available
-                   completely, as we are running in edge-triggered mode and won't get a notification again for the same data. */
-                int done = 0;
-                done = LCWEB_socket_read (events[i].data.fd);
-                if (done) {
-                    printf ("Closed connection on descriptor %d\n",
-                            events[i].data.fd);
-
-                    /* Closing the descriptor will make epoll remove it
-                       from the set of descriptors which are monitored. */
-                    close (events[i].data.fd);
-                }
+                LCWEB_socket_handle_request (events[i].data.fd);
             }
 
         }

@@ -1,14 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h> //MW: error messages
-#include <fcntl.h> //MW: nonblocking sockets
-#include <sys/socket.h> //MW: sockets
-#include <netdb.h> //MW: sockets address structs
-#include <unistd.h> //MW: geta ddress info
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <unistd.h>
 #include <sys/epoll.h>
 
 #include "LCWEB_utils.h"
+#include "LCWEB_http.h"
 
 void
 LCWEB_socket_set_non_blocking (int socket_fd) {
@@ -82,11 +83,6 @@ LCWEB_socket_listen_nonblocking (int *socket_fd, char *port) {
     printf ("LCWEB initialized\n");
 }
 
-void
-LCWEB_abort (void) {
-    abort ();
-}
-
 int
 LCWEB_socket_accept (int epoll_fd, int listen_fd) {
     struct sockaddr in_addr;
@@ -98,8 +94,7 @@ LCWEB_socket_accept (int epoll_fd, int listen_fd) {
     client_fd = accept (listen_fd, &in_addr, &in_len);
     if (client_fd == -1) {
         if ((errno == EAGAIN) ||
-                (errno == EWOULDBLOCK)) {
-            // We have processed all incoming connections.
+                (errno == EWOULDBLOCK)) { /// We have processed all incoming connections.
             return -1;
         } else {
             perror ("accept");
@@ -110,21 +105,14 @@ LCWEB_socket_accept (int epoll_fd, int listen_fd) {
                      hbuf, sizeof hbuf,
                      sbuf, sizeof sbuf,
                      NI_NUMERICHOST | NI_NUMERICSERV);
-    if (s == 0) {
-        printf("Accepted connection on descriptor %d "
-               "(host=%s, port=%s)\n", client_fd, hbuf, sbuf);
-    }
 
-    /* Make the incoming socket non-blocking and add it to the
-       list of fds to monitor. */
     LCWEB_socket_set_non_blocking (client_fd);
-
     LCWEB_epoll_add_etin (&epoll_fd, &client_fd);
     return client_fd;
 }
 
 int
-LCWEB_socket_read (int socket_fd) {
+LCWEB_socket_handle_request (int socket_fd) {
     int done;
     while (1) {
         int s;
@@ -132,42 +120,53 @@ LCWEB_socket_read (int socket_fd) {
         char buf[512];
         done = 0;
         count = read (socket_fd, buf, sizeof buf);
-        if (count == -1) {
-            /* If errno == EAGAIN, that means we have read all
-               data. So go back to the main loop. */
+        if (count == -1) { ///If errno == EAGAIN, that means we have read all data. So go back to the main loop.
             if (errno != EAGAIN) {
                 perror ("read");
                 done = 1;
             }
             break;
-        } else if (count == 0) {
-            /* End of file. The remote has closed the
-               connection. */
+        } else if (count == 0) { /// End of file. The remote has closed the connection.
             done = 1;
             break;
         }
 
-        /* Write the buffer to standard output */
-        s = write (1, buf, count);
-
-        if (s == -1) {
-            perror ("write");
-            LCWEB_abort ();
-        }
+        //s = write (1, buf, count);
+        //printf ("\n\n\n");
+        //if (s == -1) {
+        //    perror ("write");
+        //    LCWEB_abort ();
+        //}
     }
-    //MW:
-    //if (done == 0) {
-        printf ("\nwrite to: %i\n\n\n", socket_fd );
-        if (done == 0) {
-            LCWEB_send_default_message(socket_fd);
-            done = 1;
-        }
-        //    *newest_fd = *newest_fd + 1;
-        //    fd_buffer[*newest_fd];
-        //    printf ("\nAdded file descriptor: %i\n", socket_fd);
-        //    printf ("At position: %i\n", *newest_fd);
-    //}
+
+    /// done signifies whether the connection is still alive
+    /// since we don't keep the connection alive the connection is closed in all cases.
+    LCWEB_socket_send_default_message(socket_fd);
+    close (socket_fd);
     return done;
+}
+
+int
+LCWEB_socket_send_default_message (int fd) {
+    int ret;
+    char *message = LCWEB_http_html_login ();
+
+    ret = send(fd,message,strlen(message),0);
+    if (ret == 0) {
+        printf ("error code: %i\n", ret);
+        printf ("returned value %i", ret);
+        abort ();
+    } else if (ret < 0) {
+        printf ("error code: %i\n", ret);
+        printf("send() failed");
+        abort ();
+    }
+    return ret;
+}
+
+void
+LCWEB_abort (void) {
+    abort ();
 }
 
 void
@@ -192,37 +191,7 @@ LCWEB_epoll_add_etin (int *epoll_fd, int *client_fd) {
     }
 }
 
-int
-LCWEB_send_default_message(int fd) {
-    printf("attempt to send data\n");
-    int ret;
-    char *message=
-    "HTTP/1.1 200 OK\nConnection: close\nContent-Type: text/html\n\n\nHello World!";
-    //"Hello World!";
 
-    ret = send(fd,message,strlen(message),0);
-    /*MW: add a test for EAGAIN and add to burrer in case send has failed */
-    if (ret == -1) {
-        if (errno == EWOULDBLOCK) {
-            printf ("EWOULDBLOCK");
-        }
-        if (errno == EAGAIN) {
-            printf ("EAGAIN");
-        }
-        printf ("\nERROR NUMBER: %i\n", errno);
-    }
-    if (ret == 0) {
-        printf ("error code: %i\n", ret);
-        printf ("returned value %i", ret);
-        abort ();
-    } else if (ret < 0) {
-        printf ("error code: %i\n", ret);
-        printf("send() failed");
-        abort ();
-    }
-    printf("Send %d bytes\n", ret);
-    return ret;
-}
 
 
 

@@ -11,10 +11,13 @@ void
 LCWEB_socket_listen_nonblocking (int *socket_fd, char *port);
 
 int
-LCWEB_socket_read (int socket_fd);
+LCWEB_socket_handle_request (int socket_fd);
 
 int
 LCWEB_socket_accept (int epoll_fd, int listen_fd);
+
+int
+LCWEB_socket_send_default_message (int fd);
 
 void
 LCWEB_epoll_create (int *epoll_fd);
@@ -24,8 +27,5 @@ LCWEB_epoll_add_etin (int *epoll_fd, int *client_fd);
 
 void
 LCWEB_abort (void);
-
-int
-LCWEB_send_default_message(int fd);
 
 #endif // LCWEB_UTILS_H_INCLUDED
